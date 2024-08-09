@@ -2,27 +2,14 @@
   import { onMount } from "svelte";
   import { createChart, LineStyle } from "lightweight-charts";
   import TradeModal from "../lib/TradeModal.svelte";
-  export let proposalId;
   export let proposal;
 
-  // let proposal;
-  let priceChartData = {
-    Pass: [],
-    Fail: []
-  };
-  let markets = [
-    { name: "Pass", buyPrice: 0.66, sellPrice: 0.64, color: "#4caf50" },
-    { name: "Fail", buyPrice: 0.60, sellPrice: 0.58, color: "#fc494a" }
-  ];
-  let positions = [
-    { side: "Long", market: "Pass", quantity: 100, avg: 0.59, current: 0.65, conditionalPnl: 5.4 },
-    { side: "Short", market: "Fail", quantity: 50, avg: 0.64, current: 0.59, conditionalPnl: 2.5 }
-  ];
-  let trades = [
-    { market: "Pass", action: "Buy", amount: 60, price: 0.58, total: 34.8 },
-    { market: "Pass", action: "Buy", amount: 40, price: 0.62, total: 24.8 },
-    { market: "Fail", action: "Sell", amount: 50, price: 0.64, total: 32 }
-  ];
+  let markets = proposal.markets;
+  let positions = proposal.positions;
+  let trades = proposal.trades;
+
+  let priceChartData = {};
+  let groupedMarkets = {};
 
   let showModal = false;
   let selectedMarket = null;
@@ -32,10 +19,11 @@
   let chart;
 
   onMount(async () => {
+    groupedMarkets = groupMarketsByCondition(markets);
     const currentDate = new Date();
 
-    markets.forEach(market => {
-      priceChartData[market.name] = Array(30)
+    Object.keys(groupedMarkets).forEach((condition) => {
+      priceChartData[condition] = Array(30)
         .fill(0)
         .map((_, i) => ({
           time: new Date(currentDate.getTime() - (29 - i) * 24 * 60 * 60 * 1000)
@@ -47,28 +35,51 @@
 
     chart = createChart(chartContainer, {
       layout: {
-        background: { type: 'solid', color: '#222' },
-        textColor: '#DDD',
+        background: { type: "solid", color: "#222" },
+        textColor: "#DDD",
       },
       grid: {
-        vertLines: { color: '#444' },
-        horzLines: { color: '#444' },
+        vertLines: { color: "#444" },
+        horzLines: { color: "#444" },
       },
       width: chartContainer.clientWidth,
       height: chartContainer.clientHeight,
     });
 
-    markets.forEach(market => {
-      const series = chart.addLineSeries({ 
-        color: market.color,
+    Object.entries(groupedMarkets).forEach(([condition, markets]) => {
+      const series = chart.addLineSeries({
+        color: markets[0].color,
         lineWidth: 2,
-        title: market.name,
+        title: condition,
       });
-      series.setData(priceChartData[market.name]);
+      series.setData(priceChartData[condition]);
     });
 
     chart.timeScale().fitContent();
   });
+
+  function groupMarketsByCondition(markets) {
+    return markets.reduce((acc, market) => {
+      if (!acc[market.condition]) {
+        acc[market.condition] = [];
+      }
+      acc[market.condition].push(market);
+      return acc;
+    }, {});
+  }
+
+  function calculateMetric(markets) {
+    console.log(markets);
+    const upMarket = markets.find((m) => m.asset.includes("UP"));
+    return upMarket
+      ? (upMarket.buyPrice * 100).toFixed(1) + "%"
+      : "$" + ((markets[0].buyPrice + markets[0].sellPrice) / 2).toFixed(2);
+    // const downMarket = markets.find(m => m.asset.includes("DOWN"));
+    // if (upMarket && downMarket) {
+    //   return ((upMarket.buyPrice + downMarket.sellPrice) / 2 * 100).toFixed(1) + '%';
+    // }
+    // return 'N/A';
+  }
 
   function handleResize() {
     if (chart) {
@@ -80,7 +91,7 @@
   }
 
   function handleTrade(market, action) {
-    selectedMarket = market.name;
+    selectedMarket = `${market.condition}-${market.asset}`;
     selectedAction = action;
     selectedPrice = action === "Buy" ? market.buyPrice : market.sellPrice;
     showModal = true;
@@ -97,10 +108,11 @@
   }
 
   function calculatePnL(position) {
-      const pnl = position.side === "Short"
-          ? (position.avg - position.current) * position.quantity
-          : (position.current - position.avg) * position.quantity;
-      return pnl.toFixed(2);
+    const pnl =
+      position.side === "Short"
+        ? (position.avg - position.current) * position.quantity
+        : (position.current - position.avg) * position.quantity;
+    return pnl.toFixed(2);
   }
 </script>
 
@@ -109,6 +121,7 @@
 {#if showModal}
   <TradeModal
     market={selectedMarket}
+    conditions={Object.keys(groupedMarkets)}
     action={selectedAction}
     price={selectedPrice}
     on:trade={handleTradeSubmit}
@@ -151,22 +164,32 @@
             <thead>
               <tr>
                 <th>Condition</th>
-                <th>Price</th>
+                <th>{proposal.metric}</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {#each markets as market}
+              {#each Object.entries(groupedMarkets) as [condition, markets]}
                 <tr>
-                  <td>{market.name}</td>
-                  <td>${((market.buyPrice + market.sellPrice) / 2).toFixed(2)}</td>
-                  <td class="button-column">
-                    <button class="buy" on:click={() => handleTrade(market, "Buy")}>
-                      Buy ${market.buyPrice.toFixed(2)}
-                    </button>
-                    <button class="sell" on:click={() => handleTrade(market, "Sell")}>
-                      Sell ${market.sellPrice.toFixed(2)}
-                    </button>
+                  <td>{condition}</td>
+                  <td>{calculateMetric(markets)}</td>
+                  <td class="actions-cell">
+                    {#each markets as market}
+                      <div class="market-actions">
+                        <button
+                          class="buy"
+                          on:click={() => handleTrade(market, "Buy")}
+                        >
+                          Buy {market.asset} ${market.buyPrice.toFixed(2)}
+                        </button>
+                        <button
+                          class="sell"
+                          on:click={() => handleTrade(market, "Sell")}
+                        >
+                          Sell {market.asset} ${market.sellPrice.toFixed(2)}
+                        </button>
+                      </div>
+                    {/each}
                   </td>
                 </tr>
               {/each}
@@ -185,6 +208,7 @@
                 <th>Avg</th>
                 <th>Current</th>
                 <th>Conditional P&L</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -193,10 +217,11 @@
                   <td>{position.side}</td>
                   <td>{position.quantity}</td>
                   <td>{position.market}</td>
-                  <td>META</td>
+                  <td>{position.asset}</td>
                   <td>${position.avg.toFixed(2)}</td>
                   <td>${position.current.toFixed(2)}</td>
                   <td>${calculatePnL(position)}</td>
+                  <td><button class="close-position">Close</button></td>
                 </tr>
               {/each}
             </tbody>
@@ -221,9 +246,9 @@
                   <td>{trade.action}</td>
                   <td>{trade.amount}</td>
                   <td>{trade.market}</td>
-                  <td>META</td>
+                  <td>{trade.asset}</td>
                   <td>${trade.price.toFixed(2)}</td>
-                  <td>${trade.total.toFixed(2)}</td>
+                  <td>${(trade.price * trade.amount).toFixed(2)}</td>
                 </tr>
               {/each}
             </tbody>
@@ -241,7 +266,8 @@
     overflow: hidden;
   }
 
-  .left-panel, .right-panel {
+  .left-panel,
+  .right-panel {
     flex: 1;
     overflow-y: auto;
   }
@@ -256,7 +282,8 @@
     flex-direction: column;
   }
 
-  .top-right, .bottom-right {
+  .top-right,
+  .bottom-right {
     background-color: #111;
   }
 
@@ -273,7 +300,9 @@
     padding: 1rem;
   }
 
-  h2, h3 {
+  h2,
+  h3,
+  h4 {
     color: #fc494a;
     margin-bottom: 1rem;
   }
@@ -291,7 +320,9 @@
     margin-left: -1em;
   }
 
-  .markets, .positions, .trades {
+  .markets,
+  .positions,
+  .trades {
     margin-bottom: 2rem;
   }
 
@@ -301,7 +332,8 @@
     font-size: 0.9rem;
   }
 
-  th, td {
+  th,
+  td {
     text-align: left;
     padding: 0.5rem;
     border-bottom: 1px solid #333;
@@ -316,47 +348,68 @@
     height: 300px;
   }
 
-  .markets table .button-column {
+  .actions-cell {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .market-actions {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    white-space: nowrap;
   }
 
-  .markets table button {
-    width: 100%;
-    text-align: left;
+  button {
     background-color: transparent;
     border: 1px solid #fc494a;
     color: #fc494a;
-    padding: 0.25rem;
-    font-size: 1rem;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    padding: 0.5rem;
+    font-size: 0.9rem;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease;
     cursor: pointer;
+    white-space: nowrap;
   }
 
-  .markets table button:hover {
+  button:hover {
     background-color: #fc494a;
     color: #fff;
   }
 
-  .markets table button.buy {
+  button.buy {
     border-color: #4caf50;
     color: #4caf50;
   }
 
-  .markets table button.buy:hover {
+  button.buy:hover {
     background-color: #4caf50;
     color: #fff;
   }
 
-  .markets table button.sell {
+  button.sell {
     border-color: #fc494a;
     color: #fc494a;
   }
 
-  .markets table button.sell:hover {
+  button.sell:hover {
     background-color: #fc494a;
     color: #fff;
   }
+
+  button.close-position {
+  background-color: transparent;
+  border: 1px solid #fc494a;
+  color: #fc494a;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+button.close-position:hover {
+  background-color: #fc494a;
+  color: #fff;
+}
 </style>

@@ -2,10 +2,12 @@
   import { createEventDispatcher } from 'svelte';
 
   export let market;
-  export let action;
   export let price;
   export let userPosition = 0; // Current user position in the market
+  export let conditions = []; // Array of available conditions
+  export let action = 'Buy'; // Default action, but can be set when component is used
 
+  let selectedCondition = market; // Selected condition
   let inputAmount = '';
   let availableAmount = 1000;
   let estimatedOutput = 0;
@@ -16,7 +18,7 @@
   function calculateEstimates() {
     if (inputAmount) {
       const amount = parseFloat(inputAmount);
-      if (action === 'Long') {
+      if (action === 'Buy') {
         estimatedOutput = (amount / price).toFixed(4);
         newPosition = userPosition + parseFloat(estimatedOutput);
       } else {
@@ -33,6 +35,7 @@
     dispatch('trade', {
       market,
       action,
+      condition: selectedCondition,
       inputAmount: parseFloat(inputAmount),
       estimatedOutput: parseFloat(estimatedOutput),
       newPosition
@@ -50,16 +53,48 @@
 
 <div class="modal-backdrop" on:click|self={close}>
   <div class="modal">
-    <h2>{action} {market}</h2>
-    <!-- <p>Current price: ${price.toFixed(4)}</p> -->
+    <h2>Trade {market}</h2>
     <form on:submit|preventDefault={handleSubmit}>
+      <div class="toggle-group">
+        <button
+          type="button"
+          class:active={action === 'Buy'}
+          on:click={() => action = 'Buy'}
+        >
+          Buy
+        </button>
+        <button
+          type="button"
+          class:active={action === 'Sell'}
+          on:click={() => action = 'Sell'}
+        >
+          Sell
+        </button>
+      </div>
+
       <label>
-        {action === 'Long' ? 'USDC Amount' : 'META Amount'}
+        Condition
+        <select bind:value={selectedCondition} required>
+          <option value="">Select a condition</option>
+          {#each conditions as condition}
+            <option value={condition}>{condition}</option>
+          {/each}
+        </select>
+      </label>
+
+      <label>
+        {action === 'Buy' ? 'USDC Amount' : 'META Amount'}
         <input type="number" bind:value={inputAmount} min="0" step="0.0001" required>
       </label>
-      <p>Available: {availableAmount}</p>
-      <p>Estimated to receive: {estimatedOutput} {action === 'Long' ? 'META' : 'USDC'}</p>
+      <p>Available: {availableAmount} {action === 'Buy' ? 'USDC' : 'META'}</p>
+
+      <p>Price: ${price.toFixed(4)} USDC/META</p>
+      <p>
+        Estimated to receive: {estimatedOutput} 
+        {action === 'Buy' ? 'META' : 'USDC'}
+      </p>
       <p>New position after trade: {newPosition.toFixed(4)} META</p>
+
       <div class="button-group">
         <button type="submit">Confirm {action}</button>
         <button type="button" on:click={close}>Cancel</button>
@@ -137,5 +172,41 @@
 
   button[type="button"]:hover {
     background-color: #444;
+  }
+
+  .toggle-group {
+    display: flex;
+    margin-bottom: 1rem;
+  }
+
+  .toggle-group button {
+    flex: 1;
+    background-color: #333;
+    color: #fff;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  .toggle-group button.active {
+    background-color: #FC494A;
+  }
+
+  .toggle-group button:first-child {
+    border-radius: 4px 0 0 4px;
+  }
+
+  .toggle-group button:last-child {
+    border-radius: 0 4px 4px 0;
+  }
+
+  select {
+    width: 100%;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    background-color: #222;
+    border: 1px solid #444;
+    color: #fff;
   }
 </style>
