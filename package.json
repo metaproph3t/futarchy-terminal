@@ -6,19 +6,35 @@
   "scripts": {
     "build": "rollup -c",
     "dev": "rollup -c -w",
+    "dev2": "vite dev",
     "start": "sirv public --no-clear"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^24.0.0",
-    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
+    "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
+    "@rollup/plugin-commonjs": "^24.1.0",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-replace": "^5.0.7",
     "@rollup/plugin-terser": "^0.4.0",
+    "crypto-browserify": "^3.12.0",
     "rollup": "^3.15.0",
     "rollup-plugin-css-only": "^4.3.0",
     "rollup-plugin-livereload": "^2.0.0",
+    "rollup-plugin-polyfill-node": "^0.13.0",
     "rollup-plugin-svelte": "^7.1.2",
-    "svelte": "^3.55.0"
+    "svelte": "^3.55.0",
+    "vite": "^4.3.9"
   },
   "dependencies": {
+    "@aztemi/svelte-on-solana-wallet-adapter-core": "^1.1.5",
+    "@aztemi/svelte-on-solana-wallet-adapter-ui": "^1.1.5",
+    "@metadaoproject/futarchy-sdk": "^4.0.0-alpha.23",
+    "@solana/spl-token": "^0.4.8",
+    "@solana/wallet-adapter-base": "^0.9.23",
+    "@solana/wallet-adapter-wallets": "^0.19.32",
+    "@solana/web3.js": "^1.95.2",
+    "@sveltejs/kit": "^1.6.0",
     "lightweight-charts": "^4.2.0",
     "sirv-cli": "^2.0.0",
     "svelte-routing": "^2.13.0"

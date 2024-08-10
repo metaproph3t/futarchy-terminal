@@ -1,5 +1,9 @@
 <script>
-  const logoPath = '/logo.png';
+  import {
+    WalletProvider,
+    WalletMultiButton,
+  } from "@aztemi/svelte-on-solana-wallet-adapter-ui";
+  const logoPath = "/logo.png";
 </script>
 
 <header>
@@ -11,6 +15,8 @@
     <nav>
       <a href="#home">Home</a>
       <a href="#positions">Positions</a>
+      <WalletProvider localStorageKey="walletAdapter" autoConnect />
+      <WalletMultiButton />
       <!-- Add more nav items here as needed -->
     </nav>
   </div>
@@ -19,7 +25,7 @@
 <style>
   header {
     background-color: #111;
-    border-bottom: 1px solid #FC494A;
+    border-bottom: 1px solid #fc494a;
     padding: 0.5rem 1rem;
   }
 
@@ -43,7 +49,7 @@
 
   h1 {
     font-size: 1.5rem;
-    color: #FC494A;
+    color: #fc494a;
     margin: 0;
   }
 
@@ -60,6 +66,6 @@
   }
 
   a:hover {
-    color: #FC494A;
+    color: #fc494a;
   }
 </style>
